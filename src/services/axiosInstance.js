@@ -1,4 +1,6 @@
 import axios from "axios";
+import Cookies from "js-cookie";
+
 
 const axiosInstance = axios.create({
     baseURL: `${import.meta.env.VITE_REACT_APP_API_URL}`,
@@ -9,7 +11,7 @@ const axiosInstance = axios.create({
 });
 
 axiosInstance.interceptors.request.use((config) => {
-    const token = sessionStorage.getItem("accessToken");
+    const token = Cookies.get("accessToken");
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -29,10 +31,9 @@ axiosInstance.interceptors.response.use(
 
         if (error.response && error.response.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
-            const refreshToken = sessionStorage.getItem("refreshToken");
+            const refreshToken = Cookies.get("refreshToken");
             if (!refreshToken) {
-                sessionStorage.removeItem("accessToken");
-                sessionStorage.removeItem("refreshToken");
+                Cookies.remove("accessToken");
                 return Promise.reject(error);
             }
 
@@ -45,18 +46,18 @@ axiosInstance.interceptors.response.use(
 
                 if (response.data && response.data.data.access_token) {
                     const newAccessToken = response.data.data.access_token;
-                    sessionStorage.setItem("accessToken", newAccessToken);
+                    Cookies.set("accessToken", newAccessToken)
                     originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
                     return axiosInstance(originalRequest);
                 } else {
                     console.error("Failed to refresh token. Logging out...");
-                    sessionStorage.removeItem("accessToken");
-                    sessionStorage.removeItem("refreshToken");
+                    Cookies.remove("accessToken");
+                    Cookies.remove("refreshToken");
                 }
             } catch (refreshError) {
                 console.error("Error refreshing token:", refreshError);
-                sessionStorage.removeItem("accessToken");
-                sessionStorage.removeItem("refreshToken");
+                Cookies.remove("accessToken");
+                Cookies.remove("refreshToken");
             }
         }
         return Promise.reject(error);
